@@ -1,4 +1,4 @@
-const Resource = require("../models/resource");
+const Resource = require("../models/Resource");
 const User = require("../models/user");
 const { sendEmail } = require("../config/email");
 const {
