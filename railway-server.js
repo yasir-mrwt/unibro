@@ -37,7 +37,17 @@ const corsOptions = {
 };
 
 // Middleware
+// Add this right after your CORS middleware
 app.use(cors(corsOptions));
+
+// Add CORS debugging middleware
+app.use((req, res, next) => {
+  console.log('CORS Headers:', {
+    origin: req.headers.origin,
+    'access-control-request-method': req.headers['access-control-request-method']
+  });
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
