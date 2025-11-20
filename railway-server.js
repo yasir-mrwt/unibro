@@ -42,10 +42,7 @@ app.use(
   })
 );
 
-app.use(cors({
-  origin: "*",
-  methods: "GET,POST,PUT,DELETE,OPTIONS",
-}));
+
 
 // Debug CORS
 app.use((req, res, next) => {
