@@ -39,11 +39,12 @@ const register = async (req, res) => {
 
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
 
-    await sendEmail({
+    // ✅ FIX: Make email async
+    sendEmail({
       email: user.email,
       subject: "Verify Your Email - Unibro",
       html: verificationEmail(user.fullName, verificationUrl),
-    });
+    }).catch(err => console.log('Verification email failed:', err.message));
 
     const token = generateToken(res, user._id);
 
@@ -113,11 +114,12 @@ const login = async (req, res) => {
       if (updatedUser.isLocked) {
         const unlockTime = new Date(updatedUser.lockUntil).toLocaleString();
 
-        await sendEmail({
+        // ✅ FIX: Make account locked email async
+        sendEmail({
           email: user.email,
           subject: "Account Locked - Unibro",
           html: accountLockedEmail(user.fullName, unlockTime),
-        });
+        }).catch(err => console.log('Account locked email failed:', err.message));
 
         return res.status(423).json({
           success: false,
@@ -146,12 +148,14 @@ const login = async (req, res) => {
     const loginTime = new Date().toLocaleString();
     const ipAddress = req.ip || req.connection.remoteAddress;
 
-    await sendEmail({
+    // ✅ FIX: Send email in background without awaiting
+    sendEmail({
       email: user.email,
       subject: "New Login to Your Account - Unibro",
       html: loginNotification(user.fullName, loginTime, ipAddress),
-    });
+    }).catch(err => console.log('Login notification email failed:', err.message));
 
+    // ✅ RESPOND IMMEDIATELY
     res.status(200).json({
       success: true,
       message: "Login successful!",
@@ -234,16 +238,12 @@ const verifyEmail = async (req, res) => {
 
     console.log("User verified successfully");
 
-    try {
-      await sendEmail({
-        email: user.email,
-        subject: "Welcome to Unibro! 🎉",
-        html: welcomeEmail(user.fullName),
-      });
-      console.log("Welcome email sent");
-    } catch (emailError) {
-      console.error("Error sending welcome email:", emailError);
-    }
+    // ✅ FIX: Make welcome email async
+    sendEmail({
+      email: user.email,
+      subject: "Welcome to Unibro! 🎉",
+      html: welcomeEmail(user.fullName),
+    }).catch(err => console.log('Welcome email failed:', err.message));
 
     return res.status(200).json({
       success: true,
@@ -332,12 +332,12 @@ const resendVerification = async (req, res) => {
     // Create verification URL
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
 
-    // Send verification email
-    await sendEmail({
+    // ✅ FIX: Make verification email async
+    sendEmail({
       email: user.email,
       subject: "Verify Your Email - Unibro",
       html: verificationEmail(user.fullName, verificationUrl),
-    });
+    }).catch(err => console.log('Resend verification email failed:', err.message));
 
     res.status(200).json({
       success: true,
@@ -383,11 +383,12 @@ const forgotPassword = async (req, res) => {
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-    await sendEmail({
+    // ✅ FIX: Make password reset email async
+    sendEmail({
       email: user.email,
       subject: "Password Reset Request - Unibro",
       html: passwordResetEmail(user.fullName, resetUrl),
-    });
+    }).catch(err => console.log('Password reset email failed:', err.message));
 
     res.status(200).json({
       success: true,
@@ -435,11 +436,12 @@ const resetPassword = async (req, res) => {
 
     await user.save();
 
-    await sendEmail({
+    // ✅ FIX: Make password reset success email async
+    sendEmail({
       email: user.email,
       subject: "Password Changed Successfully - Unibro",
       html: passwordResetSuccessEmail(user.fullName),
-    });
+    }).catch(err => console.log('Password reset success email failed:', err.message));
 
     res.status(200).json({
       success: true,
@@ -506,7 +508,7 @@ module.exports = {
   login,
   logout,
   verifyEmail,
-  resendVerification, // ✅ NEW
+  resendVerification,
   getMe,
   googleCallback,
   forgotPassword,
