@@ -24,20 +24,35 @@ const server = http.createServer(app);
 // Connect to database
 connectDB();
 
-// CORS configuration
-const corsOptions = {
-  origin: [
-    process.env.FRONTEND_URL,
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:5174",
-  ].filter(Boolean),
-  credentials: true,
-  optionsSuccessStatus: 200,
-};
+// --------------------------------------------------
+// ✅ CORS — MUST be the first middleware
+// --------------------------------------------------
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000"
+].filter(Boolean);
 
-// Middleware
-app.use(cors(corsOptions));
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  })
+);
+
+
+
+// Debug CORS
+app.use((req, res, next) => {
+  console.log("Incoming request origin:", req.headers.origin);
+  next();
+});
+
+// --------------------------------------------------
+// Other Middlewares
+// --------------------------------------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -45,7 +60,7 @@ app.use(cookieParser());
 // Session configuration
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "defaultsecret",
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -59,76 +74,72 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// --------------------------------------------------
 // Routes
+// --------------------------------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/resources", resourceRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/chat", chatRoutes);
 
-// Health check route
+// Health check
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
-    message: "Server is running on Railway with WebSockets!",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || "development",
+    message: "Server running successfully on Railway!",
+    time: new Date(),
   });
 });
 
-// Root route
+// Root
 app.get("/", (req, res) => {
   res.json({
-    success: true,
-    message: "UNIBRO Backend API with Real-time Chat!",
+    greeting: "UNIBRO Backend Running!",
     version: "1.0.0",
-    environment: process.env.NODE_ENV || "development",
-    features: ["REST API", "WebSocket Chat", "Authentication"],
   });
 });
 
-// Setup Socket.io
+// --------------------------------------------------
+// Socket.IO with CORS
+// --------------------------------------------------
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.FRONTEND_URL,
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://localhost:5174",
-    ],
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
+// Setup chat sockets
 setupChatSocket(io);
 
-// 404 handler
+// --------------------------------------------------
+// 404 Handler
+// --------------------------------------------------
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: "Route not found",
-    path: req.path,
+    endpoint: req.path,
   });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
+  console.error("Global Error:", err);
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || "Internal server error",
-    error: process.env.NODE_ENV === "development" ? err : {},
+    message: err.message || "Internal Server Error",
   });
 });
 
-// Start server
+// --------------------------------------------------
+// Start Server — IMPORTANT: bind to 0.0.0.0
+// --------------------------------------------------
 const PORT = process.env.PORT || 5001;
+
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`
-🚀 UNIBRO Server running on port ${PORT}
-✅ REST API: http://localhost:${PORT}
-✅ WebSockets: ws://localhost:${PORT}
-✅ Health: http://localhost:${PORT}/api/health
-  `);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 Public URL: https://unibro-production.up.railway.app`);
 });

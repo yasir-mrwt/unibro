@@ -20,6 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+     "resend": "^3.0.0",
     "@supabase/supabase-js": "^2.81.1",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
@@ -36,7 +37,5 @@
     "passport-google-oauth20": "^2.0.0",
     "socket.io": "^4.8.1"
   },
-  "engines": {
-    "node": ">=18.x"
-  }
+ "node": ">=20.0.0"
 }

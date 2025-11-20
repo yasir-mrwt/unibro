@@ -1,35 +1,30 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require('resend');
 
-// Create reusable transporter
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
-    },
-  });
-};
+// Initialize Resend with your API key
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Send email function
 const sendEmail = async (options) => {
-  const transporter = createTransporter();
-
-  const mailOptions = {
-    from: `${process.env.EMAIL_FROM} <${process.env.EMAIL_USER}>`,
-    to: options.email,
-    subject: options.subject,
-    html: options.html,
-  };
-
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent:", info.messageId);
-    return { success: true, messageId: info.messageId };
+    console.log('📧 Attempting to send email via Resend to:', options.email);
+    console.log('📧 Subject:', options.subject);
+    
+    const { data, error } = await resend.emails.send({
+      from: 'Unibro <onboarding@resend.dev>', // You can customize this later
+      to: options.email,
+      subject: options.subject,
+      html: options.html,
+    });
+
+    if (error) {
+      console.error('❌ Resend error:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('✅ Email sent successfully via Resend! ID:', data.id);
+    return { success: true, messageId: data.id };
+    
   } catch (error) {
-    console.error("❌ Email error:", error);
+    console.error('❌ Email sending failed:', error.message);
     return { success: false, error: error.message };
   }
 };
