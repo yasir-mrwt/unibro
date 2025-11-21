@@ -39,12 +39,11 @@ const register = async (req, res) => {
 
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
 
-    // ✅ FIX: Make email async
-    sendEmail({
+    await sendEmail({
       email: user.email,
       subject: "Verify Your Email - Unibro",
       html: verificationEmail(user.fullName, verificationUrl),
-    }).catch(err => console.log('Verification email failed:', err.message));
+    });
 
     const token = generateToken(res, user._id);
 
@@ -114,12 +113,11 @@ const login = async (req, res) => {
       if (updatedUser.isLocked) {
         const unlockTime = new Date(updatedUser.lockUntil).toLocaleString();
 
-        // ✅ FIX: Make account locked email async
-        sendEmail({
+        await sendEmail({
           email: user.email,
           subject: "Account Locked - Unibro",
           html: accountLockedEmail(user.fullName, unlockTime),
-        }).catch(err => console.log('Account locked email failed:', err.message));
+        });
 
         return res.status(423).json({
           success: false,
@@ -148,14 +146,12 @@ const login = async (req, res) => {
     const loginTime = new Date().toLocaleString();
     const ipAddress = req.ip || req.connection.remoteAddress;
 
-    // ✅ FIX: Send email in background without awaiting
-    sendEmail({
+    await sendEmail({
       email: user.email,
       subject: "New Login to Your Account - Unibro",
       html: loginNotification(user.fullName, loginTime, ipAddress),
-    }).catch(err => console.log('Login notification email failed:', err.message));
+    });
 
-    // ✅ RESPOND IMMEDIATELY
     res.status(200).json({
       success: true,
       message: "Login successful!",
@@ -222,7 +218,7 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Invalid or expired verification token",
-        expired: true, // ✅ Flag to indicate token expired
+        expired: true,
       });
     }
 
@@ -231,19 +227,22 @@ const verifyEmail = async (req, res) => {
     user.isVerified = true;
     user.verificationToken = undefined;
     user.verificationTokenExpire = undefined;
-    // Reset resend attempts on successful verification
     user.verificationResendCount = 0;
     user.lastVerificationResend = undefined;
     await user.save();
 
     console.log("User verified successfully");
 
-    // ✅ FIX: Make welcome email async
-    sendEmail({
-      email: user.email,
-      subject: "Welcome to Unibro! 🎉",
-      html: welcomeEmail(user.fullName),
-    }).catch(err => console.log('Welcome email failed:', err.message));
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Welcome to Unibro! 🎉",
+        html: welcomeEmail(user.fullName),
+      });
+      console.log("Welcome email sent");
+    } catch (emailError) {
+      console.error("Error sending welcome email:", emailError);
+    }
 
     return res.status(200).json({
       success: true,
@@ -261,7 +260,7 @@ const verifyEmail = async (req, res) => {
 
 // @desc    Resend verification email
 // @route   POST /api/auth/resend-verification
-// @access  Private (user must be logged in)
+// @access  Private
 const resendVerification = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -273,7 +272,6 @@ const resendVerification = async (req, res) => {
       });
     }
 
-    // Check if already verified
     if (user.isVerified) {
       return res.status(400).json({
         success: false,
@@ -281,11 +279,9 @@ const resendVerification = async (req, res) => {
       });
     }
 
-    // Rate limiting: Check resend count (max 5 attempts per day)
     const now = Date.now();
     const oneDayAgo = now - 24 * 60 * 60 * 1000;
 
-    // Reset count if last resend was more than 24 hours ago
     if (
       !user.lastVerificationResend ||
       user.lastVerificationResend < oneDayAgo
@@ -293,7 +289,6 @@ const resendVerification = async (req, res) => {
       user.verificationResendCount = 0;
     }
 
-    // Check if user exceeded limit
     if (user.verificationResendCount >= 5) {
       const timeUntilReset = new Date(
         user.lastVerificationResend.getTime() + 24 * 60 * 60 * 1000
@@ -305,7 +300,6 @@ const resendVerification = async (req, res) => {
       });
     }
 
-    // Rate limiting: Prevent spam (minimum 2 minutes between requests)
     if (user.lastVerificationResend) {
       const timeSinceLastResend = now - user.lastVerificationResend.getTime();
       const twoMinutes = 2 * 60 * 1000;
@@ -320,24 +314,20 @@ const resendVerification = async (req, res) => {
       }
     }
 
-    // Generate new verification token
     const verificationToken = user.generateVerificationToken();
 
-    // Update resend tracking
     user.verificationResendCount = (user.verificationResendCount || 0) + 1;
     user.lastVerificationResend = now;
 
     await user.save();
 
-    // Create verification URL
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
 
-    // ✅ FIX: Make verification email async
-    sendEmail({
+    await sendEmail({
       email: user.email,
       subject: "Verify Your Email - Unibro",
       html: verificationEmail(user.fullName, verificationUrl),
-    }).catch(err => console.log('Resend verification email failed:', err.message));
+    });
 
     res.status(200).json({
       success: true,
@@ -383,12 +373,11 @@ const forgotPassword = async (req, res) => {
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-    // ✅ FIX: Make password reset email async
-    sendEmail({
+    await sendEmail({
       email: user.email,
       subject: "Password Reset Request - Unibro",
       html: passwordResetEmail(user.fullName, resetUrl),
-    }).catch(err => console.log('Password reset email failed:', err.message));
+    });
 
     res.status(200).json({
       success: true,
@@ -436,12 +425,11 @@ const resetPassword = async (req, res) => {
 
     await user.save();
 
-    // ✅ FIX: Make password reset success email async
-    sendEmail({
+    await sendEmail({
       email: user.email,
       subject: "Password Changed Successfully - Unibro",
       html: passwordResetSuccessEmail(user.fullName),
-    }).catch(err => console.log('Password reset success email failed:', err.message));
+    });
 
     res.status(200).json({
       success: true,
@@ -487,18 +475,71 @@ const getMe = async (req, res) => {
   }
 };
 
+// ✅ FIXED: Google OAuth callback with email notification
 // @desc    Google OAuth callback
 // @route   GET /api/auth/google/callback
 // @access  Public
 const googleCallback = async (req, res) => {
   try {
+    console.log("🔵 Google OAuth callback triggered");
+    console.log("🔍 User from passport:", req.user);
+
+    if (!req.user) {
+      console.error("❌ No user found in request");
+      return res.redirect(`${process.env.FRONTEND_URL}/auth/error`);
+    }
+
+    // ✅ Generate JWT token
     const token = generateToken(res, req.user._id);
+    console.log("✅ Token generated:", token.substring(0, 20) + "...");
 
+    // ✅ Update last login
     req.user.lastLogin = Date.now();
-    await req.user.save();
 
-    res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}`);
+    // ✅ Check if this is first time login (user was just created)
+    const isNewUser =
+      !req.user.lastLogin ||
+      Date.now() - new Date(req.user.createdAt).getTime() < 60000; // Within 1 minute
+
+    await req.user.save();
+    console.log("✅ User last login updated");
+
+    // ✅ FIXED: Send appropriate welcome/login email
+    try {
+      if (isNewUser) {
+        // Send welcome email for new Google sign-ups
+        console.log("📧 Sending welcome email to new Google user...");
+        await sendEmail({
+          email: req.user.email,
+          subject: "Welcome to Unibro! 🎉",
+          html: welcomeEmail(req.user.fullName),
+        });
+        console.log("✅ Welcome email sent successfully");
+      } else {
+        // Send login notification for returning users
+        console.log("📧 Sending login notification...");
+        const loginTime = new Date().toLocaleString();
+        const ipAddress = req.ip || req.connection?.remoteAddress || "Unknown";
+
+        await sendEmail({
+          email: req.user.email,
+          subject: "New Login to Your Account - Unibro",
+          html: loginNotification(req.user.fullName, loginTime, ipAddress),
+        });
+        console.log("✅ Login notification sent successfully");
+      }
+    } catch (emailError) {
+      console.error("⚠️ Email notification error:", emailError);
+      // Don't fail the login if email fails
+    }
+
+    // ✅ Redirect with token
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/success?token=${token}`;
+    console.log("🔄 Redirecting to:", redirectUrl);
+
+    res.redirect(redirectUrl);
   } catch (error) {
+    console.error("❌ Google OAuth callback error:", error);
     res.redirect(`${process.env.FRONTEND_URL}/auth/error`);
   }
 };
