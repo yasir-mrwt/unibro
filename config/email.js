@@ -1,30 +1,43 @@
-const { Resend } = require('resend');
-
-// Initialize Resend with your API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+const Mailjet = require("node-mailjet");
 
 const sendEmail = async (options) => {
   try {
-    console.log('📧 Attempting to send email via Resend to:', options.email);
-    console.log('📧 Subject:', options.subject);
-    
-    const { data, error } = await resend.emails.send({
-      from: 'Unibro <onboarding@resend.dev>', // You can customize this later
-      to: options.email,
-      subject: options.subject,
-      html: options.html,
+    console.log("📧 Attempting to send email via Mailjet to:", options.email);
+
+    const mailjet = Mailjet.apiConnect(
+      process.env.MAILJET_API_KEY,
+      process.env.MAILJET_SECRET_KEY
+    );
+
+    const request = mailjet.post("send", { version: "v3.1" }).request({
+      Messages: [
+        {
+          From: {
+            Email: "hello@unibro.com",
+            Name: "Unibro",
+          },
+          To: [
+            {
+              Email: options.email,
+              Name: options.name || "User",
+            },
+          ],
+          Subject: options.subject,
+          HTMLPart: options.html,
+          TextPart:
+            options.text || "Please view this email in an HTML-enabled client.",
+        },
+      ],
     });
 
-    if (error) {
-      console.error('❌ Resend error:', error);
-      return { success: false, error: error.message };
-    }
-
-    console.log('✅ Email sent successfully via Resend! ID:', data.id);
-    return { success: true, messageId: data.id };
-    
+    const result = await request;
+    console.log("✅ Email sent successfully via Mailjet!");
+    return {
+      success: true,
+      messageId: result.body.Messages[0].To[0].MessageID,
+    };
   } catch (error) {
-    console.error('❌ Email sending failed:', error.message);
+    console.error("❌ Mailjet error:", error.message);
     return { success: false, error: error.message };
   }
 };
