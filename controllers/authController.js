@@ -1,6 +1,7 @@
 const User = require("../models/user");
 const crypto = require("crypto");
 const generateToken = require("../utils/generateToken");
+const jwt = require("jsonwebtoken");
 const { sendEmail } = require("../config/email");
 const {
   welcomeEmail,
@@ -10,6 +11,13 @@ const {
   passwordResetSuccessEmail,
   accountLockedEmail,
 } = require("../utils/emailTemplates");
+
+// ✅ SIMPLE TOKEN GENERATOR FOR GOOGLE OAUTH
+const generateSimpleToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+};
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -475,7 +483,7 @@ const getMe = async (req, res) => {
   }
 };
 
-// ✅ FIXED: Google OAuth callback with email notification
+// ✅ FIXED: Google OAuth callback with simple token
 // @desc    Google OAuth callback
 // @route   GET /api/auth/google/callback
 // @access  Public
@@ -489,25 +497,24 @@ const googleCallback = async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL}/auth/error`);
     }
 
-    // ✅ Generate JWT token
-    const token = generateToken(res, req.user._id);
+    // ✅ FIXED: Use simple token generator (NO HTTP-ONLY COOKIE)
+    const token = generateSimpleToken(req.user._id);
     console.log("✅ Token generated:", token.substring(0, 20) + "...");
 
     // ✅ Update last login
     req.user.lastLogin = Date.now();
 
-    // ✅ Check if this is first time login (user was just created)
+    // ✅ Check if this is first time login
     const isNewUser =
       !req.user.lastLogin ||
-      Date.now() - new Date(req.user.createdAt).getTime() < 60000; // Within 1 minute
+      Date.now() - new Date(req.user.createdAt).getTime() < 60000;
 
     await req.user.save();
     console.log("✅ User last login updated");
 
-    // ✅ FIXED: Send appropriate welcome/login email
+    // ✅ Send appropriate email
     try {
       if (isNewUser) {
-        // Send welcome email for new Google sign-ups
         console.log("📧 Sending welcome email to new Google user...");
         await sendEmail({
           email: req.user.email,
@@ -516,7 +523,6 @@ const googleCallback = async (req, res) => {
         });
         console.log("✅ Welcome email sent successfully");
       } else {
-        // Send login notification for returning users
         console.log("📧 Sending login notification...");
         const loginTime = new Date().toLocaleString();
         const ipAddress = req.ip || req.connection?.remoteAddress || "Unknown";
@@ -530,10 +536,9 @@ const googleCallback = async (req, res) => {
       }
     } catch (emailError) {
       console.error("⚠️ Email notification error:", emailError);
-      // Don't fail the login if email fails
     }
 
-    // ✅ Redirect with token
+    // ✅ Redirect with token in URL
     const redirectUrl = `${process.env.FRONTEND_URL}/auth/success?token=${token}`;
     console.log("🔄 Redirecting to:", redirectUrl);
 
