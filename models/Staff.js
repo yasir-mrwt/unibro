@@ -77,7 +77,7 @@ const staffSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    collection: "staffs", // EXPLICITLY SPECIFY COLLECTION NAME
+    collection: "staffs",
   }
 );
 

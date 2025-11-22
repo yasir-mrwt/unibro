@@ -6,11 +6,9 @@ const {
   resourceRejectedEmail,
   newResourceSubmissionEmail,
 } = require("../utils/emailTemplates");
-const { deleteFileFromSupabase } = require("../config/supabaseConfig"); // ADD THIS
+const { deleteFileFromSupabase } = require("../config/supabaseConfig");
 
-// @desc    Upload new resource (Verified users only)
-// @route   POST /api/resources/upload
-// @access  Private (Verified users)
+// Upload new resource (verified users only)
 const uploadResource = async (req, res) => {
   try {
     const {
@@ -19,7 +17,7 @@ const uploadResource = async (req, res) => {
       description,
       resourceType,
       department,
-      semester, // ========== ADDED: Get semester from request ==========
+      semester,
       section,
       batch,
       year,
@@ -31,7 +29,6 @@ const uploadResource = async (req, res) => {
       thumbnailUrl,
     } = req.body;
 
-    // Check if user is verified
     if (!req.user.isVerified) {
       return res.status(403).json({
         success: false,
@@ -40,19 +37,16 @@ const uploadResource = async (req, res) => {
       });
     }
 
-    // ========== NEW: Auto-approve if user is admin ==========
     const isAdmin = req.user.role === "admin";
     const status = isAdmin ? "approved" : "pending";
-    // ========================================================
 
-    // Create resource - INCLUDING DEPARTMENT AND SEMESTER
     const resource = await Resource.create({
       courseName,
       title,
       description,
       resourceType,
       department,
-      semester, // ========== ADDED: Save semester with resource ==========
+      semester,
       section,
       batch,
       year,
@@ -65,18 +59,15 @@ const uploadResource = async (req, res) => {
       uploadedBy: req.user._id,
       uploaderName: req.user.fullName,
       uploaderEmail: req.user.email,
-      status: status, // ========== Auto-approved for admin ==========
-      // Auto-set review info for admin uploads
+      status: status,
       ...(isAdmin && {
         reviewedBy: req.user._id,
         reviewedAt: Date.now(),
       }),
     });
 
-    // Get all admins to notify
     const admins = await User.find({ role: "admin" });
 
-    // Send notification to all admins (only for non-admin uploads)
     if (!isAdmin) {
       for (const admin of admins) {
         await sendEmail({
@@ -89,13 +80,12 @@ const uploadResource = async (req, res) => {
             courseName,
             resourceType,
             department,
-            semester // ========== ADDED: Include semester in email ==========
+            semester
           ),
         });
       }
     }
 
-    // ========== MODIFIED: Different success message for admin ==========
     const successMessage = isAdmin
       ? "Resource uploaded and automatically approved!"
       : "Resource uploaded successfully! It will be available after admin approval.";
@@ -106,7 +96,6 @@ const uploadResource = async (req, res) => {
       resource,
     });
   } catch (error) {
-    console.error("Upload resource error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to upload resource",
@@ -115,23 +104,18 @@ const uploadResource = async (req, res) => {
   }
 };
 
-// @desc    Get approved resources (with filters) - UPDATED with department and semester filtering
-// @route   GET /api/resources
-// @access  Public
+// Get approved resources with filters
 const getResources = async (req, res) => {
   try {
     const { search, year, resourceType, section, batch, department, semester } =
-      req.query; // ========== ADDED: semester ==========
+      req.query;
 
-    // Build query for approved resources only
     let query = { status: "approved" };
 
-    // Add filters - DEPARTMENT AND SEMESTER
     if (department && department !== "All") {
       query.department = department;
     }
     if (semester && semester !== "All") {
-      // ========== ADDED: Semester filter ==========
       query.semester = semester;
     }
     if (resourceType && resourceType !== "All") {
@@ -147,14 +131,13 @@ const getResources = async (req, res) => {
       query.batch = batch;
     }
 
-    // Search functionality - UPDATED to include department and semester
     if (search) {
       query.$or = [
         { courseName: { $regex: search, $options: "i" } },
         { title: { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
         { department: { $regex: search, $options: "i" } },
-        { semester: { $regex: search, $options: "i" } }, // ========== ADDED: Search in semester ==========
+        { semester: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -162,7 +145,6 @@ const getResources = async (req, res) => {
       .populate("uploadedBy", "fullName email")
       .sort({ createdAt: -1 });
 
-    // Group by year
     const groupedByYear = resources.reduce((acc, resource) => {
       const year = resource.year;
       if (!acc[year]) {
@@ -178,7 +160,6 @@ const getResources = async (req, res) => {
       resources: groupedByYear,
     });
   } catch (error) {
-    console.error("Get resources error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch resources",
@@ -187,16 +168,13 @@ const getResources = async (req, res) => {
   }
 };
 
-// @desc    Get user's own resources
-// @route   GET /api/resources/my-posts
-// @access  Private
+// Get user's own resources
 const getMyResources = async (req, res) => {
   try {
     const resources = await Resource.find({ uploadedBy: req.user._id }).sort({
       createdAt: -1,
     });
 
-    // Group by status
     const groupedByStatus = {
       pending: resources.filter((r) => r.status === "pending"),
       approved: resources.filter((r) => r.status === "approved"),
@@ -209,7 +187,6 @@ const getMyResources = async (req, res) => {
       resources: groupedByStatus,
     });
   } catch (error) {
-    console.error("Get my resources error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch your resources",
@@ -218,9 +195,7 @@ const getMyResources = async (req, res) => {
   }
 };
 
-// @desc    Delete own resource - UPDATED to delete file from cloud
-// @route   DELETE /api/resources/:id
-// @access  Private
+// Delete resource and associated file
 const deleteResource = async (req, res) => {
   try {
     const resource = await Resource.findById(req.params.id);
@@ -232,7 +207,6 @@ const deleteResource = async (req, res) => {
       });
     }
 
-    // Check if user owns this resource or is admin
     if (
       resource.uploadedBy.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
@@ -243,17 +217,9 @@ const deleteResource = async (req, res) => {
       });
     }
 
-    // ========== DELETE FILE FROM SUPABASE CLOUD ==========
     if (resource.fileUrl) {
-      const deleteResult = await deleteFileFromSupabase(resource.fileUrl);
-      if (!deleteResult.success) {
-        console.error("Failed to delete file from cloud:", deleteResult.error);
-        // Continue anyway - we still delete the database record
-      } else {
-        console.log("File deleted from cloud successfully");
-      }
+      await deleteFileFromSupabase(resource.fileUrl);
     }
-    // ====================================================
 
     await resource.deleteOne();
 
@@ -262,7 +228,6 @@ const deleteResource = async (req, res) => {
       message: "Resource and file deleted successfully",
     });
   } catch (error) {
-    console.error("Delete resource error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to delete resource",
@@ -271,9 +236,7 @@ const deleteResource = async (req, res) => {
   }
 };
 
-// @desc    Get pending resources (Admin only)
-// @route   GET /api/resources/pending
-// @access  Private/Admin
+// Get pending resources (admin only)
 const getPendingResources = async (req, res) => {
   try {
     const resources = await Resource.find({ status: "pending" })
@@ -286,7 +249,6 @@ const getPendingResources = async (req, res) => {
       resources,
     });
   } catch (error) {
-    console.error("Get pending resources error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch pending resources",
@@ -295,9 +257,7 @@ const getPendingResources = async (req, res) => {
   }
 };
 
-// @desc    Approve resource (Admin only)
-// @route   PUT /api/resources/:id/approve
-// @access  Private/Admin
+// Approve resource (admin only)
 const approveResource = async (req, res) => {
   try {
     const resource = await Resource.findById(req.params.id);
@@ -321,7 +281,6 @@ const approveResource = async (req, res) => {
     resource.reviewedAt = Date.now();
     await resource.save();
 
-    // Send approval email to uploader
     await sendEmail({
       email: resource.uploaderEmail,
       subject: "Your Resource Has Been Approved! 🎉 - Unibro",
@@ -338,7 +297,6 @@ const approveResource = async (req, res) => {
       resource,
     });
   } catch (error) {
-    console.error("Approve resource error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to approve resource",
@@ -347,9 +305,7 @@ const approveResource = async (req, res) => {
   }
 };
 
-// @desc    Reject resource (Admin only) - UPDATED to delete file from cloud
-// @route   PUT /api/resources/:id/reject
-// @access  Private/Admin
+// Reject resource and delete file (admin only)
 const rejectResource = async (req, res) => {
   try {
     const { reason } = req.body;
@@ -377,17 +333,9 @@ const rejectResource = async (req, res) => {
       });
     }
 
-    // ========== DELETE FILE FROM SUPABASE CLOUD ==========
     if (resource.fileUrl) {
-      const deleteResult = await deleteFileFromSupabase(resource.fileUrl);
-      if (!deleteResult.success) {
-        console.error("Failed to delete file from cloud:", deleteResult.error);
-        // Continue anyway - we still update the database
-      } else {
-        console.log("Rejected resource file deleted from cloud");
-      }
+      await deleteFileFromSupabase(resource.fileUrl);
     }
-    // ====================================================
 
     resource.status = "rejected";
     resource.rejectionReason = reason;
@@ -395,7 +343,6 @@ const rejectResource = async (req, res) => {
     resource.reviewedAt = Date.now();
     await resource.save();
 
-    // Send rejection email to uploader
     await sendEmail({
       email: resource.uploaderEmail,
       subject: "Resource Submission Update - Unibro",
@@ -413,7 +360,6 @@ const rejectResource = async (req, res) => {
       resource,
     });
   } catch (error) {
-    console.error("Reject resource error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to reject resource",
@@ -422,9 +368,7 @@ const rejectResource = async (req, res) => {
   }
 };
 
-// @desc    Increment download count
-// @route   PUT /api/resources/:id/download
-// @access  Public
+// Increment download count
 const incrementDownload = async (req, res) => {
   try {
     const resource = await Resource.findById(req.params.id);
@@ -443,7 +387,6 @@ const incrementDownload = async (req, res) => {
       message: "Download count updated",
     });
   } catch (error) {
-    console.error("Increment download error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update download count",
@@ -452,9 +395,7 @@ const incrementDownload = async (req, res) => {
   }
 };
 
-// @desc    Increment view count
-// @route   PUT /api/resources/:id/view
-// @access  Public
+// Increment view count
 const incrementView = async (req, res) => {
   try {
     const resource = await Resource.findById(req.params.id);
@@ -473,7 +414,6 @@ const incrementView = async (req, res) => {
       message: "View count updated",
     });
   } catch (error) {
-    console.error("Increment view error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update view count",
@@ -482,9 +422,7 @@ const incrementView = async (req, res) => {
   }
 };
 
-// @desc    Get all resources (Admin only - for dashboard)
-// @route   GET /api/resources/admin/all
-// @access  Private/Admin
+// Get all resources for admin dashboard
 const getAllResourcesAdmin = async (req, res) => {
   try {
     const { status } = req.query;
@@ -512,7 +450,6 @@ const getAllResourcesAdmin = async (req, res) => {
       resources,
     });
   } catch (error) {
-    console.error("Get all resources error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch resources",
@@ -520,14 +457,11 @@ const getAllResourcesAdmin = async (req, res) => {
     });
   }
 };
-// @desc    Get resource counts by department and semester
-// @route   GET /api/resources/counts
-// @access  Public
+
+// Get resource counts by department and semester
 const getResourceCounts = async (req, res) => {
   try {
     const { department, semester } = req.query;
-
-    console.log("📊 Fetching counts for:", { department, semester });
 
     if (!department || !semester) {
       return res.status(400).json({
@@ -541,7 +475,7 @@ const getResourceCounts = async (req, res) => {
         $match: {
           department: department,
           semester: semester,
-          status: "approved", // Only count approved resources
+          status: "approved",
         },
       },
       {
@@ -552,22 +486,16 @@ const getResourceCounts = async (req, res) => {
       },
     ]);
 
-    console.log("📈 Raw counts from DB:", counts);
-
-    // Convert array to object for easier frontend use
     const countObject = {};
     counts.forEach((item) => {
       countObject[item._id] = item.count;
     });
-
-    console.log("✅ Final counts object:", countObject);
 
     res.status(200).json({
       success: true,
       counts: countObject,
     });
   } catch (error) {
-    console.error("❌ Counts error:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching resource counts",
@@ -580,10 +508,10 @@ module.exports = {
   uploadResource,
   getResources,
   getMyResources,
-  deleteResource, // Updated
+  deleteResource,
   getPendingResources,
   approveResource,
-  rejectResource, // Updated
+  rejectResource,
   incrementDownload,
   incrementView,
   getAllResourcesAdmin,

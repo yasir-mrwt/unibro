@@ -2,9 +2,7 @@ const User = require("../models/user");
 const { sendEmail } = require("../config/email");
 const { passwordResetSuccessEmail } = require("../utils/emailTemplates");
 
-// @desc    Get all users (Admin only)
-// @route   GET /api/users
-// @access  Private/Admin
+// Get all users (admin only)
 const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password");
@@ -23,9 +21,7 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// @desc    Update user profile
-// @route   PUT /api/users/profile
-// @access  Private
+// Update user profile
 const updateProfile = async (req, res) => {
   try {
     const { fullName, email } = req.body;
@@ -35,7 +31,6 @@ const updateProfile = async (req, res) => {
     if (user) {
       user.fullName = fullName || user.fullName;
 
-      // Check if email is being changed and if it's already in use
       if (email && email !== user.email) {
         const emailExists = await User.findOne({ email });
         if (emailExists) {
@@ -45,7 +40,7 @@ const updateProfile = async (req, res) => {
           });
         }
         user.email = email;
-        user.isVerified = false; // Require re-verification if email changed
+        user.isVerified = false;
       }
 
       const updatedUser = await user.save();
@@ -77,9 +72,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// @desc    Change password (from profile settings)
-// @route   PUT /api/users/change-password
-// @access  Private
+// Change password from profile settings
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -91,7 +84,6 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Get user with password
     const user = await User.findById(req.user._id).select("+password");
 
     if (!user) {
@@ -101,7 +93,6 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Check if user uses Google OAuth
     if (user.authProvider === "google" && !user.password) {
       return res.status(400).json({
         success: false,
@@ -109,7 +100,6 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Verify current password
     const isPasswordCorrect = await user.comparePassword(currentPassword);
 
     if (!isPasswordCorrect) {
@@ -119,7 +109,6 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Validate new password
     if (newPassword.length < 6) {
       return res.status(400).json({
         success: false,
@@ -134,11 +123,9 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Set new password
     user.password = newPassword;
     await user.save();
 
-    // Send confirmation email
     await sendEmail({
       email: user.email,
       subject: "Password Changed Successfully - Unibro",
@@ -150,7 +137,6 @@ const changePassword = async (req, res) => {
       message: "Password changed successfully",
     });
   } catch (error) {
-    console.error("Change password error:", error);
     res.status(500).json({
       success: false,
       message: "Server error while changing password",

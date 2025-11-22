@@ -12,16 +12,14 @@ const {
   accountLockedEmail,
 } = require("../utils/emailTemplates");
 
-// ✅ SIMPLE TOKEN GENERATOR FOR GOOGLE OAUTH
+// Simple token generator for Google OAuth (no HTTP-only cookies)
 const generateSimpleToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
 };
 
-// @desc    Register new user
-// @route   POST /api/auth/register
-// @access  Public
+// Register new user
 const register = async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
@@ -70,7 +68,6 @@ const register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Register error:", error);
     res.status(500).json({
       success: false,
       message: "Server error during registration",
@@ -79,9 +76,7 @@ const register = async (req, res) => {
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
+// Login user
 const login = async (req, res) => {
   try {
     const { email, password, rememberMe } = req.body;
@@ -99,7 +94,7 @@ const login = async (req, res) => {
       const unlockTime = new Date(user.lockUntil).toLocaleString();
       return res.status(423).json({
         success: false,
-        message: `Account is temporarily locked due to multiple failed login attempts. Please try again after ${unlockTime}`,
+        message: `Account is temporarily locked. Please try again after ${unlockTime}`,
         lockedUntil: user.lockUntil,
       });
     }
@@ -129,7 +124,7 @@ const login = async (req, res) => {
 
         return res.status(423).json({
           success: false,
-          message: `Too many failed login attempts. Your account has been locked until ${unlockTime}`,
+          message: `Too many failed login attempts. Account locked until ${unlockTime}`,
           lockedUntil: updatedUser.lockUntil,
         });
       }
@@ -175,7 +170,6 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
     res.status(500).json({
       success: false,
       message: "Server error during login",
@@ -184,9 +178,7 @@ const login = async (req, res) => {
   }
 };
 
-// @desc    Logout user
-// @route   POST /api/auth/logout
-// @access  Private
+// Logout user
 const logout = async (req, res) => {
   try {
     res.cookie("token", "", {
@@ -207,14 +199,10 @@ const logout = async (req, res) => {
   }
 };
 
-// @desc    Verify email
-// @route   GET /api/auth/verify-email/:token
-// @access  Public
+// Verify email
 const verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
-
-    console.log("Verification attempt with token:", token);
 
     const user = await User.findOne({
       verificationToken: token,
@@ -222,15 +210,12 @@ const verifyEmail = async (req, res) => {
     });
 
     if (!user) {
-      console.log("No user found or token expired");
       return res.status(400).json({
         success: false,
         message: "Invalid or expired verification token",
         expired: true,
       });
     }
-
-    console.log("User found:", user.email);
 
     user.isVerified = true;
     user.verificationToken = undefined;
@@ -239,25 +224,19 @@ const verifyEmail = async (req, res) => {
     user.lastVerificationResend = undefined;
     await user.save();
 
-    console.log("User verified successfully");
-
     try {
       await sendEmail({
         email: user.email,
         subject: "Welcome to Unibro! 🎉",
         html: welcomeEmail(user.fullName),
       });
-      console.log("Welcome email sent");
-    } catch (emailError) {
-      console.error("Error sending welcome email:", emailError);
-    }
+    } catch (emailError) {}
 
     return res.status(200).json({
       success: true,
       message: "Email verified successfully!",
     });
   } catch (error) {
-    console.error("Verification error:", error);
     return res.status(500).json({
       success: false,
       message: "Server error during verification",
@@ -266,9 +245,7 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-// @desc    Resend verification email
-// @route   POST /api/auth/resend-verification
-// @access  Private
+// Resend verification email
 const resendVerification = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -303,7 +280,7 @@ const resendVerification = async (req, res) => {
       );
       return res.status(429).json({
         success: false,
-        message: `You've reached the maximum verification email requests. Please try again after ${timeUntilReset.toLocaleString()}`,
+        message: `Maximum verification email requests reached. Try again after ${timeUntilReset.toLocaleString()}`,
         retryAfter: timeUntilReset,
       });
     }
@@ -343,7 +320,6 @@ const resendVerification = async (req, res) => {
       remainingAttempts: 5 - user.verificationResendCount,
     });
   } catch (error) {
-    console.error("Resend verification error:", error);
     res.status(500).json({
       success: false,
       message: "Error sending verification email",
@@ -352,9 +328,7 @@ const resendVerification = async (req, res) => {
   }
 };
 
-// @desc    Forgot password
-// @route   POST /api/auth/forgot-password
-// @access  Public
+// Forgot password
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -392,7 +366,6 @@ const forgotPassword = async (req, res) => {
       message: "Password reset email sent! Please check your inbox.",
     });
   } catch (error) {
-    console.error("Forgot password error:", error);
     res.status(500).json({
       success: false,
       message: "Error sending password reset email",
@@ -401,9 +374,7 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// @desc    Reset password
-// @route   PUT /api/auth/reset-password/:token
-// @access  Public
+// Reset password
 const resetPassword = async (req, res) => {
   try {
     const { password } = req.body;
@@ -445,7 +416,6 @@ const resetPassword = async (req, res) => {
         "Password reset successful! You can now login with your new password.",
     });
   } catch (error) {
-    console.error("Reset password error:", error);
     res.status(500).json({
       success: false,
       message: "Error resetting password",
@@ -454,9 +424,7 @@ const resetPassword = async (req, res) => {
   }
 };
 
-// @desc    Get current logged in user
-// @route   GET /api/auth/me
-// @access  Private
+// Get current logged in user
 const getMe = async (req, res) => {
   try {
     const user = req.user;
@@ -483,47 +451,30 @@ const getMe = async (req, res) => {
   }
 };
 
-// ✅ FIXED: Google OAuth callback with simple token
-// @desc    Google OAuth callback
-// @route   GET /api/auth/google/callback
-// @access  Public
+// Google OAuth callback
 const googleCallback = async (req, res) => {
   try {
-    console.log("🔵 Google OAuth callback triggered");
-    console.log("🔍 User from passport:", req.user);
-
     if (!req.user) {
-      console.error("❌ No user found in request");
       return res.redirect(`${process.env.FRONTEND_URL}/auth/error`);
     }
 
-    // ✅ FIXED: Use simple token generator (NO HTTP-ONLY COOKIE)
     const token = generateSimpleToken(req.user._id);
-    console.log("✅ Token generated:", token.substring(0, 20) + "...");
 
-    // ✅ Update last login
     req.user.lastLogin = Date.now();
-
-    // ✅ Check if this is first time login
     const isNewUser =
       !req.user.lastLogin ||
       Date.now() - new Date(req.user.createdAt).getTime() < 60000;
 
     await req.user.save();
-    console.log("✅ User last login updated");
 
-    // ✅ Send appropriate email
     try {
       if (isNewUser) {
-        console.log("📧 Sending welcome email to new Google user...");
         await sendEmail({
           email: req.user.email,
           subject: "Welcome to Unibro! 🎉",
           html: welcomeEmail(req.user.fullName),
         });
-        console.log("✅ Welcome email sent successfully");
       } else {
-        console.log("📧 Sending login notification...");
         const loginTime = new Date().toLocaleString();
         const ipAddress = req.ip || req.connection?.remoteAddress || "Unknown";
 
@@ -532,19 +483,12 @@ const googleCallback = async (req, res) => {
           subject: "New Login to Your Account - Unibro",
           html: loginNotification(req.user.fullName, loginTime, ipAddress),
         });
-        console.log("✅ Login notification sent successfully");
       }
-    } catch (emailError) {
-      console.error("⚠️ Email notification error:", emailError);
-    }
+    } catch (emailError) {}
 
-    // ✅ Redirect with token in URL
     const redirectUrl = `${process.env.FRONTEND_URL}/auth/success?token=${token}`;
-    console.log("🔄 Redirecting to:", redirectUrl);
-
     res.redirect(redirectUrl);
   } catch (error) {
-    console.error("❌ Google OAuth callback error:", error);
     res.redirect(`${process.env.FRONTEND_URL}/auth/error`);
   }
 };

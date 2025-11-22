@@ -6,7 +6,7 @@ const {
   login,
   logout,
   verifyEmail,
-  resendVerification, // ✅ NEW
+  resendVerification,
   getMe,
   googleCallback,
   forgotPassword,
@@ -32,7 +32,7 @@ router.post("/logout", protect, logout);
 router.get("/verify-email/:token", verifyEmail);
 
 // @route   POST /api/auth/verify-email/:token
-router.post("/resend-verification", protect, resendVerification); // ✅ NEW
+router.post("/resend-verification", protect, resendVerification);
 
 // @route   GET /api/auth/me
 router.get("/me", protect, getMe);

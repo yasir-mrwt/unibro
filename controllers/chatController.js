@@ -1,34 +1,29 @@
 const ChatMessage = require("../models/ChatMessage");
 const User = require("../models/user");
 
-// @desc    Get chat messages for a room (department + semester)
-// @route   GET /api/chat/messages/:department/:semester
-// @access  Private
+// Get chat messages for a room with pagination
 const getRoomMessages = async (req, res) => {
   try {
     const { department, semester } = req.params;
-    const { limit = 50, before } = req.query; // Pagination support
+    const { limit = 50, before } = req.query;
 
     const roomId = `${department}_${semester}`;
 
-    // Build query
     let query = {
       roomId,
       isDeleted: false,
     };
 
-    // For pagination - get messages before a certain date
     if (before) {
       query.createdAt = { $lt: new Date(before) };
     }
 
     const messages = await ChatMessage.find(query)
-      .sort({ createdAt: -1 }) // Latest first
+      .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .populate("userId", "fullName email")
       .populate("replyTo");
 
-    // Reverse to show oldest first
     const sortedMessages = messages.reverse();
 
     res.status(200).json({
@@ -38,7 +33,6 @@ const getRoomMessages = async (req, res) => {
       hasMore: messages.length === parseInt(limit),
     });
   } catch (error) {
-    console.error("Get messages error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch messages",
@@ -47,9 +41,7 @@ const getRoomMessages = async (req, res) => {
   }
 };
 
-// @desc    Send a new message
-// @route   POST /api/chat/messages
-// @access  Private
+// Send a new message
 const sendMessage = async (req, res) => {
   try {
     const {
@@ -85,7 +77,6 @@ const sendMessage = async (req, res) => {
       userEmail: req.user.email,
     });
 
-    // Populate user data
     await newMessage.populate("userId", "fullName email");
     if (replyTo) {
       await newMessage.populate("replyTo");
@@ -96,7 +87,6 @@ const sendMessage = async (req, res) => {
       message: newMessage,
     });
   } catch (error) {
-    console.error("Send message error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to send message",
@@ -105,9 +95,7 @@ const sendMessage = async (req, res) => {
   }
 };
 
-// @desc    Delete a message
-// @route   DELETE /api/chat/messages/:messageId
-// @access  Private
+// Delete a message (soft delete)
 const deleteMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
@@ -121,7 +109,6 @@ const deleteMessage = async (req, res) => {
       });
     }
 
-    // Check if user owns the message
     if (message.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -139,7 +126,6 @@ const deleteMessage = async (req, res) => {
       message: "Message deleted successfully",
     });
   } catch (error) {
-    console.error("Delete message error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to delete message",
@@ -148,20 +134,16 @@ const deleteMessage = async (req, res) => {
   }
 };
 
-// @desc    Get unread message count for a room
-// @route   GET /api/chat/unread/:department/:semester
-// @access  Private
+// Get unread message count for a room
 const getUnreadCount = async (req, res) => {
   try {
     const { department, semester } = req.params;
     const roomId = `${department}_${semester}`;
 
-    // Get user's last read timestamp from User model or separate collection
-    // For now, count messages created after user's last visit
     const count = await ChatMessage.countDocuments({
       roomId,
       isDeleted: false,
-      userId: { $ne: req.user._id }, // Exclude own messages
+      userId: { $ne: req.user._id },
       createdAt: { $gt: req.user.lastChatVisit || new Date(0) },
     });
 
@@ -170,7 +152,6 @@ const getUnreadCount = async (req, res) => {
       unreadCount: count,
     });
   } catch (error) {
-    console.error("Get unread count error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to get unread count",
@@ -179,14 +160,11 @@ const getUnreadCount = async (req, res) => {
   }
 };
 
-// @desc    Mark messages as read
-// @route   PUT /api/chat/read/:department/:semester
-// @access  Private
+// Mark messages as read
 const markAsRead = async (req, res) => {
   try {
     const { department, semester } = req.params;
 
-    // Update user's last chat visit time
     await User.findByIdAndUpdate(req.user._id, {
       lastChatVisit: Date.now(),
     });
@@ -196,7 +174,6 @@ const markAsRead = async (req, res) => {
       message: "Marked as read",
     });
   } catch (error) {
-    console.error("Mark as read error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to mark as read",
@@ -205,15 +182,10 @@ const markAsRead = async (req, res) => {
   }
 };
 
-// @desc    Get active users in a room (online users)
-// @route   GET /api/chat/active/:department/:semester
-// @access  Private
+// Get active users in a room
 const getActiveUsers = async (req, res) => {
   try {
     const { department, semester } = req.params;
-
-    // This will be managed via Socket.io
-    // For now, return users who were active in last 5 minutes
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
     const activeUsers = await User.find({
@@ -226,7 +198,6 @@ const getActiveUsers = async (req, res) => {
       users: activeUsers,
     });
   } catch (error) {
-    console.error("Get active users error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to get active users",

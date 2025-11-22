@@ -1,11 +1,7 @@
 const { createClient } = require("@supabase/supabase-js");
 
-// Initialize Supabase client for backend
+// Initialize Supabase client with service role for backend operations
 const supabaseUrl = process.env.SUPABASE_URL;
-
-// IMPORTANT: Use SERVICE_ROLE key for backend operations
-// This key has admin privileges to delete files
-// Get this from Supabase Dashboard -> Settings -> API -> service_role key
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
@@ -16,9 +12,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 /**
- * Delete file from Supabase Storage (Backend)
- * @param {string} fileUrl - The public URL or storage path
- * @returns {Promise<Object>}
+ * Delete file from Supabase Storage
  */
 const deleteFileFromSupabase = async (fileUrl) => {
   try {
@@ -28,7 +22,6 @@ const deleteFileFromSupabase = async (fileUrl) => {
 
     // Extract storage path from URL
     let filePath = fileUrl;
-
     if (fileUrl.includes("http")) {
       const url = new URL(fileUrl);
       const pathParts = url.pathname.split("/unibro-files/");
@@ -37,21 +30,16 @@ const deleteFileFromSupabase = async (fileUrl) => {
       }
     }
 
-    console.log("Backend: Deleting file from Supabase:", filePath);
-
     const { error } = await supabase.storage
       .from("unibro-files")
       .remove([filePath]);
 
     if (error) {
-      console.error("Supabase delete error:", error);
       return { success: false, error: error.message };
     }
 
-    console.log("Backend: File deleted successfully");
     return { success: true };
   } catch (error) {
-    console.error("Backend delete file error:", error);
     return {
       success: false,
       error: error.message || "Failed to delete file",
@@ -61,8 +49,6 @@ const deleteFileFromSupabase = async (fileUrl) => {
 
 /**
  * Delete staff image from Supabase Storage
- * @param {string} storagePath - The storage path of staff image to delete
- * @returns {Promise<Object>} - { success, error }
  */
 const deleteStaffImage = async (storagePath) => {
   try {
@@ -70,21 +56,16 @@ const deleteStaffImage = async (storagePath) => {
       return { success: false, error: "No storage path provided" };
     }
 
-    console.log("Backend: Deleting staff image from Supabase:", storagePath);
-
     const { error } = await supabase.storage
-      .from("unibro-files") // Using the same bucket as other files
+      .from("unibro-files")
       .remove([storagePath]);
 
     if (error) {
-      console.error("Staff image delete error:", error);
       return { success: false, error: error.message };
     }
 
-    console.log("Backend: Staff image deleted successfully");
     return { success: true };
   } catch (error) {
-    console.error("Backend delete staff image error:", error);
     return {
       success: false,
       error: error.message || "Failed to delete staff image",
@@ -93,14 +74,10 @@ const deleteStaffImage = async (storagePath) => {
 };
 
 /**
- * Upload staff image to Supabase Storage (Backend version)
- * @param {Buffer} fileBuffer - The file buffer to upload
- * @param {string} fileName - The filename
- * @returns {Promise<Object>} - { success, imageUrl, error }
+ * Upload staff image to Supabase Storage
  */
 const uploadStaffImage = async (fileBuffer, fileName) => {
   try {
-    // Generate unique filename
     const timestamp = Date.now();
     const fileExt = fileName.split(".").pop();
     const uniqueFileName = `staff-${timestamp}-${Math.random()
@@ -108,22 +85,18 @@ const uploadStaffImage = async (fileBuffer, fileName) => {
       .substring(7)}.${fileExt}`;
     const filePath = `staff-profiles/${uniqueFileName}`;
 
-    console.log("Backend: Uploading staff image to Supabase:", filePath);
-
-    // Upload to Supabase storage
     const { data, error } = await supabase.storage
       .from("unibro-files")
       .upload(filePath, fileBuffer, {
         cacheControl: "3600",
         upsert: false,
-        contentType: "image/jpeg", // Adjust based on file type
+        contentType: "image/jpeg",
       });
 
     if (error) {
       throw error;
     }
 
-    // Get public URL
     const { data: urlData } = supabase.storage
       .from("unibro-files")
       .getPublicUrl(filePath);
@@ -134,7 +107,6 @@ const uploadStaffImage = async (fileBuffer, fileName) => {
       storagePath: filePath,
     };
   } catch (error) {
-    console.error("Backend staff image upload error:", error);
     return {
       success: false,
       error: error.message || "Failed to upload staff image",
@@ -144,8 +116,6 @@ const uploadStaffImage = async (fileBuffer, fileName) => {
 
 /**
  * Extract storage path from staff image URL
- * @param {string} imageUrl - The full public URL of staff image
- * @returns {string} - The storage path (e.g., "staff-profiles/filename.jpg")
  */
 const extractStaffImagePath = (imageUrl) => {
   try {
@@ -160,7 +130,6 @@ const extractStaffImagePath = (imageUrl) => {
 
     return null;
   } catch (error) {
-    console.error("Error extracting staff image path:", error);
     return null;
   }
 };
@@ -168,7 +137,7 @@ const extractStaffImagePath = (imageUrl) => {
 module.exports = {
   supabase,
   deleteFileFromSupabase,
-  deleteStaffImage, // ADD THIS EXPORT
-  uploadStaffImage, // ADD THIS EXPORT
-  extractStaffImagePath, // ADD THIS EXPORT
+  deleteStaffImage,
+  uploadStaffImage,
+  extractStaffImagePath,
 };
