@@ -29,9 +29,10 @@ connectDB();
 // --------------------------------------------------
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  "https://unibro-production.vercel.app",
   "http://localhost:5173",
   "http://localhost:5174",
-  "http://localhost:3000"
+  "http://localhost:3000",
 ].filter(Boolean);
 
 app.use(
@@ -41,8 +42,6 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
-
-
 
 // Debug CORS
 app.use((req, res, next) => {
