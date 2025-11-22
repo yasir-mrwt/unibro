@@ -520,6 +520,61 @@ const getAllResourcesAdmin = async (req, res) => {
     });
   }
 };
+// @desc    Get resource counts by department and semester
+// @route   GET /api/resources/counts
+// @access  Public
+const getResourceCounts = async (req, res) => {
+  try {
+    const { department, semester } = req.query;
+
+    console.log("📊 Fetching counts for:", { department, semester });
+
+    if (!department || !semester) {
+      return res.status(400).json({
+        success: false,
+        message: "Department and semester are required",
+      });
+    }
+
+    const counts = await Resource.aggregate([
+      {
+        $match: {
+          department: department,
+          semester: semester,
+          status: "approved", // Only count approved resources
+        },
+      },
+      {
+        $group: {
+          _id: "$resourceType",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    console.log("📈 Raw counts from DB:", counts);
+
+    // Convert array to object for easier frontend use
+    const countObject = {};
+    counts.forEach((item) => {
+      countObject[item._id] = item.count;
+    });
+
+    console.log("✅ Final counts object:", countObject);
+
+    res.status(200).json({
+      success: true,
+      counts: countObject,
+    });
+  } catch (error) {
+    console.error("❌ Counts error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching resource counts",
+      error: error.message,
+    });
+  }
+};
 
 module.exports = {
   uploadResource,
@@ -532,4 +587,5 @@ module.exports = {
   incrementDownload,
   incrementView,
   getAllResourcesAdmin,
+  getResourceCounts,
 };
