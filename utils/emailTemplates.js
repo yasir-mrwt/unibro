@@ -1,5 +1,7 @@
 // Welcome email template
 const welcomeEmail = (name) => {
+  const currentYear = new Date().getFullYear();
+
   return `
     <!DOCTYPE html>
     <html>
@@ -10,8 +12,6 @@ const welcomeEmail = (name) => {
         .header { background: linear-gradient(135deg, #2563eb 0%, #9333ea 100%); 
                   color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .button { display: inline-block; padding: 12px 30px; background: #2563eb; 
-                  color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
         .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
       </style>
     </head>
@@ -28,7 +28,7 @@ const welcomeEmail = (name) => {
           <p style="margin-top: 30px;">Happy Learning! 📚</p>
         </div>
         <div class="footer">
-          <p>&copy; 2024 Unibro. All rights reserved.</p>
+          <p>&copy; ${currentYear} Unibro. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -38,6 +38,8 @@ const welcomeEmail = (name) => {
 
 // Verification email template
 const verificationEmail = (name, verificationUrl) => {
+  const currentYear = new Date().getFullYear();
+
   return `
     <!DOCTYPE html>
     <html>
@@ -65,12 +67,11 @@ const verificationEmail = (name, verificationUrl) => {
           <div style="text-align: center;">
             <a href="${verificationUrl}" class="button">Verify Email Address</a>
           </div>
-          <p>Or copy this link: <br><small>${verificationUrl}</small></p>
           <p><strong>This link will expire in 24 hours.</strong></p>
           <p>If you didn't create an account, please ignore this email.</p>
         </div>
         <div class="footer">
-          <p>&copy; 2024 Unibro. All rights reserved.</p>
+          <p>&copy; ${currentYear} Unibro. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -80,6 +81,8 @@ const verificationEmail = (name, verificationUrl) => {
 
 // Login notification email
 const loginNotification = (name, loginTime, ipAddress) => {
+  const currentYear = new Date().getFullYear();
+
   return `
     <!DOCTYPE html>
     <html>
@@ -111,7 +114,7 @@ const loginNotification = (name, loginTime, ipAddress) => {
           <p><strong>If this wasn't you, please secure your account immediately by changing your password.</strong></p>
         </div>
         <div class="footer">
-          <p>&copy; 2024 Unibro. All rights reserved.</p>
+          <p>&copy; ${currentYear} Unibro. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -121,6 +124,8 @@ const loginNotification = (name, loginTime, ipAddress) => {
 
 // Password reset email template
 const passwordResetEmail = (name, resetUrl) => {
+  const currentYear = new Date().getFullYear();
+
   return `
     <!DOCTYPE html>
     <html>
@@ -149,7 +154,6 @@ const passwordResetEmail = (name, resetUrl) => {
           <div style="text-align: center;">
             <a href="${resetUrl}" class="button">Reset Password</a>
           </div>
-          <p>Or copy this link: <br><small>${resetUrl}</small></p>
           <div class="warning">
             <p><strong>⚠️ Important:</strong></p>
             <p>This link will expire in 1 hour for security reasons.</p>
@@ -157,7 +161,7 @@ const passwordResetEmail = (name, resetUrl) => {
           </div>
         </div>
         <div class="footer">
-          <p>&copy; 2024 Unibro. All rights reserved.</p>
+          <p>&copy; ${currentYear} Unibro. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -167,6 +171,8 @@ const passwordResetEmail = (name, resetUrl) => {
 
 // Password reset success email
 const passwordResetSuccessEmail = (name) => {
+  const currentYear = new Date().getFullYear();
+
   return `
     <!DOCTYPE html>
     <html>
@@ -196,7 +202,7 @@ const passwordResetSuccessEmail = (name) => {
           <p><strong>If you didn't change your password, please contact our support team immediately.</strong></p>
         </div>
         <div class="footer">
-          <p>&copy; 2024 Unibro. All rights reserved.</p>
+          <p>&copy; ${currentYear} Unibro. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -206,6 +212,8 @@ const passwordResetSuccessEmail = (name) => {
 
 // Account locked email
 const accountLockedEmail = (name, unlockTime) => {
+  const currentYear = new Date().getFullYear();
+
   return `
     <!DOCTYPE html>
     <html>
@@ -237,7 +245,7 @@ const accountLockedEmail = (name, unlockTime) => {
           <p>If you need immediate assistance, please contact our support team.</p>
         </div>
         <div class="footer">
-          <p>&copy; 2024 Unibro. All rights reserved.</p>
+          <p>&copy; ${currentYear} Unibro. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -247,6 +255,8 @@ const accountLockedEmail = (name, unlockTime) => {
 
 // Resource approved email
 const resourceApprovedEmail = (name, resourceTitle, courseName) => {
+  const currentYear = new Date().getFullYear();
+
   return `
     <!DOCTYPE html>
     <html>
@@ -278,7 +288,7 @@ const resourceApprovedEmail = (name, resourceTitle, courseName) => {
           <p>Keep contributing and helping fellow students succeed! 🌟</p>
         </div>
         <div class="footer">
-          <p>&copy; 2024 Unibro. All rights reserved.</p>
+          <p>&copy; ${currentYear} Unibro. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -288,6 +298,8 @@ const resourceApprovedEmail = (name, resourceTitle, courseName) => {
 
 // Resource rejected email
 const resourceRejectedEmail = (name, resourceTitle, courseName, reason) => {
+  const currentYear = new Date().getFullYear();
+
   return `
     <!DOCTYPE html>
     <html>
@@ -321,7 +333,7 @@ const resourceRejectedEmail = (name, resourceTitle, courseName, reason) => {
           <p>If you have any questions, please don't hesitate to contact us.</p>
         </div>
         <div class="footer">
-          <p>&copy; 2024 Unibro. All rights reserved.</p>
+          <p>&copy; ${currentYear} Unibro. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -337,6 +349,8 @@ const newResourceSubmissionEmail = (
   courseName,
   resourceType
 ) => {
+  const currentYear = new Date().getFullYear();
+
   return `
     <!DOCTYPE html>
     <html>
@@ -374,7 +388,7 @@ const newResourceSubmissionEmail = (
           </div>
         </div>
         <div class="footer">
-          <p>&copy; 2024 Unibro. All rights reserved.</p>
+          <p>&copy; ${currentYear} Unibro. All rights reserved.</p>
         </div>
       </div>
     </body>
